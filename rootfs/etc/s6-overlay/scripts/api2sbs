@@ -57,4 +57,4 @@ done
 
 wait -n
 exec 3>&-
-"${s6wrap[@]}" echo "[ERRROR] Data Retrieval failed. Restarting..."
+"${s6wrap[@]}" echo "[ERROR] Data Retrieval failed. Restarting..."
