@@ -5,7 +5,6 @@ RUN set -xe && \
    # define packages needed for installation and general management of the container:
    TEMP_PACKAGES=() && \
    KEPT_PACKAGES=() && \
-   KEPT_PACKAGES+=(curl) && \
    KEPT_PACKAGES+=(jq) && \
    #
    # Install all the apt, pip3, and packages:
