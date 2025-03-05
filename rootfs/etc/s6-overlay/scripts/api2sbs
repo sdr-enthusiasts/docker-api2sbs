@@ -1,0 +1,59 @@
+#!/command/with-contenv bash
+#shellcheck shell=bash disable=SC1091,SC2154
+set -eou pipefail
+source /scripts/common
+
+SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
+SBS_PORT="${SBS_PORT:-32006}"
+
+if [[ -z "${LOCATIONS}" ]]; then
+  "${s6wrap[@]}" echo "[FATAL] LOCATIONS is not set. Container halted"
+  exec sleep infinity
+fi
+
+readarray -d ";" -t loc <<< "${LOCATIONS// /}"
+if [[ -z "$LOOPTIME" ]]; then
+  LOOPTIME="$(( ${#loc[@]} * 3 ))"
+  if (( LOOPTIME < 15 )); then
+    LOOPTIME=15
+  fi
+fi
+
+API_URL="${API_URL:-https://api.airplanes.live/v2/point}"
+if [[ "${API_URL: -1}" == "/" ]]; then API_URL="${API_URL:0:-1}"; fi
+if [[ "${API_URL:0:4}" != "http" ]]; then API_URL="https://${API_URL}"; fi
+
+WAITTIME="$(( LOOPTIME / ${#loc[@]} ))"
+
+# Open a FD so we can write to the port
+backoff=1
+while ! exec 3>/dev/tcp/"$SBS_SERVER"/"$SBS_PORT"; do
+  "${s6wrap[@]}" echo "[WARNING] Could not open a connection to $SBS_SERVER:$SBS_PORT. Trying again in $backoff seconds."
+  sleep $backoff
+  backoff=$(( backoff * 2 ))
+  if (( backoff > 60 )); then
+    backoff=60
+  fi
+done
+
+for l in "${loc[@]}"; do
+  if [[ -n "${l}" ]]; then
+    { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat/Lon/Dist=$l"
+      while true; do
+        if ! curl -sSL "${API_URL}/${l//,//}" | \
+              jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
+              sed 's/null//;s/ground/0/' >&3; then
+          "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat/Lon/Dist=$l"
+        fi
+        sleep "$LOOPTIME"
+      done
+    } &
+    sleep "$WAITTIME"
+  fi
+done
+
+"${s6wrap[@]}" echo "[INFO] Data Retrieval started for all locations"
+
+wait
+exec 3>&-
+"${s6wrap[@]}" echo "[ERRROR] Data Retrieval failed for all locations. Restarting..."

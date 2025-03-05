@@ -1,0 +1,24 @@
+services:
+
+  api2sbs:
+    image: ghcr.io/kx1t/docker-api2sbs
+    container_name: api2sbs
+    hostname: api2sbs
+    restart: always
+    # env vars:
+    # SBS_SERVER: hostname or IP of SBS server to send data to. Optional; default is ultrafeeder
+    # SBS_PORT: port of SBS server to send data to. Optional; default is 32006
+    # LOCATIONS: list of locations to retrieve data for. Format is <lat>,<lon>,<radius> with a max radius of 250 miles.
+    #            Multiple locations can be specified by separating them with a semicolon. Mandatory - container won't work without it.
+    #            Example: LOCATIONS=6,-75,250;15.25,-77.25,250
+    # TZ: timezone to use for logging. Optional; default is UTC
+    environment:
+      - TZ=America/New_York
+      - SBS_SERVER=ultrafeeder
+      - SBS_PORT=32006
+      - LOCATIONS=
+          6,-75,250;
+          15.25,-77.25,250;
+    tmpfs:
+      - /run:rw,nosuid,nodev,exec,relatime,size=32M
+      - /tmp:rw,nosuid,nodev,noexec,relatime,size=32M
