@@ -1,6 +1,6 @@
 #!/command/with-contenv bash
 #shellcheck shell=bash disable=SC1091,SC2154
-set -eou pipefail
+set -o pipefail
 source /scripts/common
 
 SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
@@ -12,12 +12,9 @@ if [[ -z "${LOCATIONS}" ]]; then
 fi
 
 readarray -d ";" -t loc <<< "${LOCATIONS// /}"
-if [[ -z "$LOOPTIME" ]]; then
-  LOOPTIME="$(( ${#loc[@]} * 3 ))"
-  if (( LOOPTIME < 15 )); then
-    LOOPTIME=15
-  fi
-fi
+
+LOOPTIME="${LOOPTIME:-$(( ${#loc[@]} * 3 ))}"
+if (( LOOPTIME < 15 )); then LOOPTIME=15; fi
 
 API_URL="${API_URL:-https://api.airplanes.live/v2/point}"
 if [[ "${API_URL: -1}" == "/" ]]; then API_URL="${API_URL:0:-1}"; fi
@@ -28,22 +25,26 @@ WAITTIME="$(( LOOPTIME / ${#loc[@]} ))"
 # Open a FD so we can write to the port
 backoff=1
 while ! exec 3>/dev/tcp/"$SBS_SERVER"/"$SBS_PORT"; do
-  "${s6wrap[@]}" echo "[WARNING] Could not open a connection to $SBS_SERVER:$SBS_PORT. Trying again in $backoff seconds."
+  exec 3>&- || true
+  "${s6wrap[@]}" echo "[WARNING] Could not open a connection to the SBS server at $SBS_SERVER:$SBS_PORT. Trying again in $backoff seconds."
   sleep $backoff
   backoff=$(( backoff * 2 ))
   if (( backoff > 60 )); then
     backoff=60
   fi
 done
+"${s6wrap[@]}" echo "[INFO] Successfully opened a connection to $SBS_SERVER:$SBS_PORT"
 
 for l in "${loc[@]}"; do
+  l="${l//[^0-9,/-.]/}"; l="${l//$'\n'/}"
   if [[ -n "${l}" ]]; then
-    { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat/Lon/Dist=$l"
+    { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat/Lon/Dist=\"$l\""
       while true; do
         if ! curl -sSL "${API_URL}/${l//,//}" | \
               jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
               sed 's/null//;s/ground/0/' >&3; then
-          "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat/Lon/Dist=$l"
+          "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat/Lon/Dist=\"$l\""
+          break
         fi
         sleep "$LOOPTIME"
       done
@@ -54,6 +55,6 @@ done
 
 "${s6wrap[@]}" echo "[INFO] Data Retrieval started for all locations"
 
-wait
+wait -n
 exec 3>&-
-"${s6wrap[@]}" echo "[ERRROR] Data Retrieval failed for all locations. Restarting..."
+"${s6wrap[@]}" echo "[ERRROR] Data Retrieval failed. Restarting..."
