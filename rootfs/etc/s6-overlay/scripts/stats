@@ -5,9 +5,11 @@ source /scripts/common
 STATS_INTERVAL="${STATS_INTERVAL:-60}"
 
 # wait until there are messages in the cache
-while compgen -G "/tmp/sbs_msg_cache.*" >/dev/null 2>/dev/null; do
+while ! compgen -G "/tmp/sbs_msg_cache.*" >/dev/null 2>/dev/null; do
   sleep 1  
 done
+
+"${s6wrap[@]}" echo "Stats started - will be showing statistics every $STATS_INTERVAL seconds"
 
 while :; do
   sleep "$STATS_INTERVAL"
