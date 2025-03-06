@@ -5,7 +5,7 @@ source /scripts/common
 
 SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
 SBS_PORT="${SBS_PORT:-32006}"
-STATS_INTERVAL="${STATS_INTERVAL:-60}"
+STATS_INTERVAL="${STATS_INTERVAL:-300}"
 
 if [[ -z "${LOCATIONS}" ]]; then
   "${s6wrap[@]}" echo "[FATAL] LOCATIONS is not set. Container halted"
@@ -41,7 +41,7 @@ for l in "${loc[@]}"; do
   if [[ -n "${l}" ]]; then
     { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat/Lon/Dist=\"$l\""
       while true; do
-        if (( STATS_INTERVAL > 0 )); then        
+        if ! chk_disabled "$STATS_INTERVAL"; then        
           if ! curl -sSL "${API_URL}/${l//,//}" | \
                 jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/' | tee >&3 >>"/tmp/sbs_msgs_cache.$l"; then
