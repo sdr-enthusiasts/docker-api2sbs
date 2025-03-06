@@ -42,9 +42,12 @@ for l in "${loc[@]}"; do
     { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat/Lon/Dist=\"$l\""
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
-          if ! curl -sSL "${API_URL}/${l//,//}" | \
+          if msg="$(curl -sSL "${API_URL}/${l//,//}" | \
                 jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
-                sed 's/null//;s/ground/0/' | tee >&3 >>"/tmp/sbs_msgs_cache.$l"; then
+                sed 's/null//;s/ground/0/')"; then
+            echo "$msg" >&3
+            echo "$msg" >> "/tmp/sbs_msgs_cache.$l"
+          else
             "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat/Lon/Dist=\"$l\""
             break
           fi
