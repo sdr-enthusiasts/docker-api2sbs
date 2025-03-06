@@ -16,11 +16,15 @@ done
 
 "${s6wrap[@]}" echo "Stats started - will be showing statistics every $STATS_INTERVAL seconds"
 
+declare -A total_msgs
+
 while :; do
   sleep "$STATS_INTERVAL"
   for f in /tmp/sbs_msgs_cache.*; do
-    "${s6wrap[@]}" echo "In the last minute, Number of messages received for coordinates LAT,LON,DIST ${f#*.}: $(cat $f | wc -l)"
+    msgs="$(wc -l < "$f")"
     truncate -s 0 "$f"
+    total_msgs["$f"]="$(( total_msgs["$f"] + msgs ))"
+    "${s6wrap[@]}" echo "LAT,LON,DIST=${f#*.}: msgs in previous $STATS_INTERVAL secs: $msgs messages; since container start: ${total_msgs["$f"]}"
   done
 
 done

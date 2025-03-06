@@ -15,3 +15,5 @@ source /scripts/common
 if [[ -f /.VERSION ]]; then
   "${s6wrap[@]}" echo "API2SBS Version: $(cat /.VERSION)"
 fi
+
+rm -f /tmp/sbs_msgs_cache.*
