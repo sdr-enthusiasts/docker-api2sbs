@@ -4,8 +4,13 @@ source /scripts/common
 
 STATS_INTERVAL="${STATS_INTERVAL:-60}"
 
+if (( STATS_INTERVAL == 0 )); then 
+  "${s6wrap[@]}" echo "Stats collection disabled."
+  exec sleep infinity
+fi
+
 # wait until there are messages in the cache
-while ! compgen -G "/tmp/sbs_msg_cache.*" >/dev/null 2>/dev/null; do
+while ! compgen -G "/tmp/sbs_msgs_cache.*" >/dev/null 2>/dev/null; do
   sleep 1  
 done
 
@@ -13,7 +18,7 @@ done
 
 while :; do
   sleep "$STATS_INTERVAL"
-  for f in /tmp/sbs_msg_cache.*; do
+  for f in /tmp/sbs_msgs_cache.*; do
     "${s6wrap[@]}" echo "In the last minute, Number of messages received for coordinates LAT,LON,DIST ${f#*.}: $(cat $f | wc -l)"
     truncate -s 0 "$f"
   done
