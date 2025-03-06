@@ -12,6 +12,7 @@ services:
     #            Multiple locations can be specified by separating them with a semicolon. Mandatory - container won't work without it.
     #            Example: LOCATIONS=6,-75,250;15.25,-77.25,250
     # TZ: timezone to use for logging. Optional; default is UTC
+    # STATS_INTERVAL: interval in seconds to log stats. Optional; default is 60. Set to 0 to disable stats logging.
     environment:
       - TZ=America/New_York
       - SBS_SERVER=ultrafeeder
@@ -19,6 +20,7 @@ services:
       - LOCATIONS=
           6,-75,250;
           15.25,-77.25,250;
+      # - STATS_INTERVAL=60    
     tmpfs:
       - /run:rw,nosuid,nodev,exec,relatime,size=32M
       - /tmp:rw,nosuid,nodev,noexec,relatime,size=32M
