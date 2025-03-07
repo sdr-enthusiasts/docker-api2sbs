@@ -24,11 +24,15 @@ if [[ -n "$API_AUTH" ]]; then
     "${s6wrap[@]}" echo "[FATAL] Container Halted: API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
     "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
     exec sleep infinity
+  else
+    "${s6wrap[@]}" echo "[INFO] API availability and API_AUTH confirmed for $API_URL"
   fi
   AUTH_HEADER="-H 'api-auth: $API_AUTH'"
 elif ! curl -sSL "$TEST_URL"; then
-    "${s6wrap[@]}" echo "[FATAL] Cannot reach API endpoint at $API_URL. Check your network connection and the API_URL variable and restart the container."
+    "${s6wrap[@]}" echo "[FATAL] Cannot reach API endpoint at $API_URL. Check your network connection and the API_URL variable and restart the container"
     exec sleep infinity
+else
+  "${s6wrap[@]}" echo "[INFO] API availability confirmed for $API_URL"
 fi
 
 readarray -d ";" -t loc <<< "${LOCATIONS// /}"
