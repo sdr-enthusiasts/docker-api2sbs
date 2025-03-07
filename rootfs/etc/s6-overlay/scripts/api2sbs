@@ -61,7 +61,7 @@ done
 "${s6wrap[@]}" echo "[INFO] Successfully opened a connection to $SBS_SERVER:$SBS_PORT"
 
 for l in "${loc[@]}"; do
-  l="${l//[^0-9,/-.]/}"; l="${l//$'\n'/}"
+  l="${l//[^0-9A-Za-z,/-.]/}"; l="${l//$'\n'/}"
   if [[ -n "${l}" ]]; then
     { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat,Lon,Dist=\"$l\""
       lat="${l%%,*}"; lx="${l#*,}"
@@ -70,8 +70,19 @@ for l in "${loc[@]}"; do
       API_URL="${API_URL//\{LAT\}/$lat}"; API_URL="${API_URL//\{LON\}/$lon}"; API_URL="${API_URL//\{DIST\}/$dist}"
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
-          if msg="$(xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.'"${json_keys[aircraft]}"'[] | "MSG,3,1,1,\(.'"${json_keys[hex]}"'|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.'"${json_keys[flight]}"'),\(.'"${json_keys[alt]}"'),\(.'"${json_keys[speed]}"'),\(.'"${json_keys[track]}"'),\(.'"${json_keys[lat]}"'),\(.'"${json_keys[lon]}"'),,\(.'"${json_keys[squawk]}"'),,,,\(if (.'"${json_keys[alt]}"' | tostring) == "ground" then "-1" else "0" end)"' | \
+          if msg="$(xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}" | \
+                jq -r --arg aircraft "${json_keys[aircraft]}" \
+                      --arg hex      "${json_keys[hex]}" \
+                      --arg flight   "${json_keys[flight]}" \
+                      --arg alt      "${json_keys[alt]}" \
+                      --arg speed    "${json_keys[speed]}" \
+                      --arg track    "${json_keys[track]}" \
+                      --arg lat      "${json_keys[lat]}" \
+                      --arg lon      "${json_keys[lon]}" \
+                      --arg squawk   "${json_keys[squawk]}" \
+                      --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
+                      '.[$aircraft][] | select( . != null ) 
+                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
             echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
@@ -80,9 +91,20 @@ for l in "${loc[@]}"; do
             break
           fi
         else
-          if ! xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.'"${json_keys[aircraft]}"'[] | "MSG,3,1,1,\(.'"${json_keys[hex]}"'|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.'"${json_keys[flight]}"'),\(.'"${json_keys[alt]}"'),\(.'"${json_keys[speed]}"'),\(.'"${json_keys[track]}"'),\(.'"${json_keys[lat]}"'),\(.'"${json_keys[lon]}"'),,\(.'"${json_keys[squawk]}"'),,,,\(if (.'"${json_keys[alt]}"' | tostring) == "ground" then "-1" else "0" end)"' | \
-                sed 's/null//;s/ground/0/' >&3; then
+          if ! xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}" | \
+                jq -r --arg aircraft "${json_keys[aircraft]}" \
+                      --arg hex      "${json_keys[hex]}" \
+                      --arg flight   "${json_keys[flight]}" \
+                      --arg alt      "${json_keys[alt]}" \
+                      --arg speed    "${json_keys[speed]}" \
+                      --arg track    "${json_keys[track]}" \
+                      --arg lat      "${json_keys[lat]}" \
+                      --arg lon      "${json_keys[lon]}" \
+                      --arg squawk   "${json_keys[squawk]}" \
+                      --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
+                      '.[$aircraft][] | select( . != null ) 
+                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' | \
+                sed 's/null//g;s/ground/0/g' >&3; then
             "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\""
             break
           fi
