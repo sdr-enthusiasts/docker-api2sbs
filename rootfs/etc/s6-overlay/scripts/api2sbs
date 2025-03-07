@@ -15,20 +15,20 @@ if [[ -z "${LOCATIONS}" ]]; then
   exec sleep infinity
 fi
 
-#check if authentication is correctly set
+#check if API can be reached and (if config'd) authentication is correctly set
 TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
 if [[ -n "$API_AUTH" ]]; then
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
       || [[ "$(jq -r '.ac[0].reg' <<< "$msg")" != "null" ]]; then
-    "${s6wrap[@]}" echo "[FATAL] Container Halted: API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
+    "${s6wrap[@]}" echo "[FATAL] Container Halted: API_URL is wrong or API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
     "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
     exec sleep infinity
   else
     "${s6wrap[@]}" echo "[INFO] API availability and API_AUTH confirmed for $API_URL"
   fi
   AUTH_HEADER="-H 'api-auth: $API_AUTH'"
-elif ! curl -sSL "$TEST_URL"; then
+elif ! curl -sSL "$TEST_URL" >/dev/null 2>/dev/null ; then
     "${s6wrap[@]}" echo "[FATAL] Cannot reach API endpoint at $API_URL. Check your network connection and the API_URL variable and restart the container"
     exec sleep infinity
 else
