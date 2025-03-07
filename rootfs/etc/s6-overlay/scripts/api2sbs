@@ -17,7 +17,7 @@ if [[ -z "${LOCATIONS}" ]]; then
 fi
 
 #check if API can be reached and (if config'd) authentication is correctly set
-TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
+TEST_URL="${API_URL//\{LAT\}/90}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
 if [[ -n "$API_AUTH" ]]; then
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
