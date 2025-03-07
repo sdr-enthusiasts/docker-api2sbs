@@ -6,6 +6,7 @@ source /scripts/common
 SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
 SBS_PORT="${SBS_PORT:-32006}"
 STATS_INTERVAL="${STATS_INTERVAL:-300}"
+JSON_AIRCRAFT_KEY="${JSON_AIRCRAFT_KEY:-ac}"
 
 # shellcheck disable=SC2016
 if [[ -z "$API_URL" ]]; then API_URL='https://api.airplanes.live/v2/point/{LAT}/{LON}/{DIST}'; fi
@@ -20,7 +21,7 @@ TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="$
 if [[ -n "$API_AUTH" ]]; then
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
-      || [[ "$(jq -r '.ac[0].reg' <<< "$msg")" != "null" ]]; then
+      || [[ "$(jq -r ".${JSON_AIRCRAFT_KEY}[0].reg <<< "$msg")" != "null" ]]; then
     "${s6wrap[@]}" echo "[FATAL] Container Halted: API_URL is wrong or API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
     "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
     exec sleep infinity
@@ -28,7 +29,7 @@ if [[ -n "$API_AUTH" ]]; then
     "${s6wrap[@]}" echo "[INFO] API availability and API_AUTH confirmed for $API_URL"
   fi
   AUTH_HEADER="-H 'api-auth: $API_AUTH'"
-elif ! curl -sSL "$TEST_URL" >/dev/null 2>/dev/null ; then
+elif ! curl -sSL "$TEST_URL" >/dev/null 2>/dev/null; then
     "${s6wrap[@]}" echo "[FATAL] Cannot reach API endpoint at $API_URL. Check your network connection and the API_URL variable and restart the container"
     exec sleep infinity
 else
@@ -69,7 +70,7 @@ for l in "${loc[@]}"; do
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
           if msg="$(xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
+                jq -r '.'"${JSON_AIRCRAFT_KEY}"'[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
             echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
@@ -79,7 +80,7 @@ for l in "${loc[@]}"; do
           fi
         else
           if ! xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
+                jq -r '.'"${JSON_AIRCRAFT_KEY}"'[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/' >&3; then
             "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\""
             break
