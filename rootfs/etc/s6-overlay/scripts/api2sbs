@@ -82,7 +82,7 @@ for l in "${loc[@]}"; do
                       --arg squawk   "${json_keys[squawk]}" \
                       --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
                       '.[$aircraft][] | select( . != null ) 
-                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' 2>&1 | \
+                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' <<< "$msg" 2>&1 | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
             echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
