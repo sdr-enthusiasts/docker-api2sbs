@@ -1,0 +1,57 @@
+#shellcheck shell=bash disable=SC2034
+
+declare -A json_keys
+
+if [[ ${API_URL,,} =~ adsbexchange ]]; then
+  json_keys=(
+    [aircraft]="ac"
+    [registration]="reg"
+    [hex]="icao"
+    [flight]="call"
+    [lat]="lat"
+    [lon]="lon"
+    [alt]="alt"
+    [track]="trak"
+    [speed]="spd"
+    [squawk]="sqk"
+  )
+elif [[ ${API_URL,,} =~ airplanes.live ]]; then
+  json_keys=(
+    [aircraft]="ac"
+    [registration]="r"
+    [hex]="hex"
+    [flight]="flight"
+    [lat]="lat"
+    [lon]="lon"
+    [alt]="alt_baro"
+    [track]="track"
+    [speed]="gs"
+    [squawk]="squawk"
+  )
+elif [[ ${API_URL,,} =~ adsb.fi ]]; then
+  json_keys=(
+    [aircraft]="aircraft"
+    [registration]="r"
+    [hex]="hex"
+    [flight]="flight"
+    [lat]="lat"
+    [lon]="lon"
+    [alt]="alt_baro"
+    [track]="track"
+    [speed]="gs"
+    [squawk]="squawk"
+  )
+else
+  json_keys=(
+    [aircraft]="ac"
+    [registration]="r"
+    [hex]="hex"
+    [flight]="flight"
+    [lat]="lat"
+    [lon]="lon"
+    [alt]="alt_baro"
+    [track]="track"
+    [speed]="gs"
+    [squawk]="squawk"
+  )
+fi

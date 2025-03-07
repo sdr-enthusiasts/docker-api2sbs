@@ -2,6 +2,7 @@
 #shellcheck shell=bash disable=SC1091,SC2154
 set -o pipefail
 source /scripts/common
+source /scripts/json_keys
 
 SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
 SBS_PORT="${SBS_PORT:-32006}"
@@ -21,7 +22,7 @@ TEST_URL="${API_URL//\{LAT\}/90}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="
 if [[ -n "$API_AUTH" ]]; then
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
-      || [[ "$(jq -r '.'"${JSON_AIRCRAFT_KEY}"'[0].reg' <<< "$msg")" != "null" ]]; then
+      || [[ "$(jq -r '.'"${json_keys[aircraft]}"'[0].'"${json_keys[registration]}"'' <<< "$msg")" != "null" ]]; then
     "${s6wrap[@]}" echo "[FATAL] Container Halted: API_URL is wrong or API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
     "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
     exec sleep infinity
@@ -70,7 +71,7 @@ for l in "${loc[@]}"; do
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
           if msg="$(xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.'"${JSON_AIRCRAFT_KEY}"'[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
+                jq -r '.'"${json_keys[aircraft]}"'[] | "MSG,3,1,1,\(.'"${json_keys[hex]}"'|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.'"${json_keys[flight]}"'),\(.'"${json_keys[alt]}"'),\(.'"${json_keys[speed]}"'),\(.'"${json_keys[track]}"'),\(.'"${json_keys[lat]}"'),\(.'"${json_keys[lon]}"'),,\(.'"${json_keys[squawk]}"'),,,,\(if (.'"${json_keys[alt]}"' | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
             echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
@@ -80,7 +81,7 @@ for l in "${loc[@]}"; do
           fi
         else
           if ! xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
-                jq -r '.'"${JSON_AIRCRAFT_KEY}"'[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
+                jq -r '.'"${json_keys[aircraft]}"'[] | "MSG,3,1,1,\(.'"${json_keys[hex]}"'|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.'"${json_keys[flight]}"'),\(.'"${json_keys[alt]}"'),\(.'"${json_keys[speed]}"'),\(.'"${json_keys[track]}"'),\(.'"${json_keys[lat]}"'),\(.'"${json_keys[lon]}"'),,\(.'"${json_keys[squawk]}"'),,,,\(if (.'"${json_keys[alt]}"' | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/' >&3; then
             "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\""
             break

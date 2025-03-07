@@ -16,23 +16,19 @@ services:
     #
     # API_URL: URL of the API to retrieve data from. These will work if they more or less conform to the "ADSBExchange V2 API" and provide
     #          data in the airplanes.json format.
-    # JSON_AIRCRAFT_KEY: key in the JSON data to look for aircraft data. Optional; default is "ac"
     # API_AUTH: Authorization key to send to the API using the "api-auth" header. Optional; default is none. This is required
     #           for some APIs, such as ADSBExchange (where you should send your feeder's UUID as the key).
     # Examples:
     # - API_URL=https://api.airplanes.live/v2/point/{LAT}/{LON}/{DIST}
-    # - JSON_AIRCRAFT_KEY=ac
-    #   ^^ These are the default values for API_URL and JSON_AIRCRAFT_KEY if omitted
+    #   ^^ This the default values for API_URL if omitted
     #
     # - API_URL=https://opendata.adsb.fi/api/v2/lat/{LAT}/lon/{LON}/dist/{DIST}
-    # - JSON_AIRCRAFT_KEY=aircraft
     #
     # - API_URL=https://adsbexchange.com/api/aircraft/lat/{LAT}/lon/{LON}/dist/{DIST}/
-    # - JSON_AIRCRAFT_KEY=ac
     # - API_AUTH=YOUR_UUID_HERE
     #
     # Note - you can also use the aircraft.json endpoint of a tar1090 instance as the API_URL. In this case,
-    #        you don't need to set the LOCATION, JSON_AIRCRAFT_KEY, or API_AUTH as those aren't supported.
+    #        you don't need to set the LOCATION or API_AUTH as those aren't supported.
     #        WARNING - make sure you do not create a data loop by getting your data from the same instance you feed it to.
     #        Example:
     # - API_URL=https://someones.tar1090.instance/data/aircraft.json
