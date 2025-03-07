@@ -70,8 +70,8 @@ for l in "${loc[@]}"; do
       API_URL="${API_URL//\{LAT\}/$lat}"; API_URL="${API_URL//\{LON\}/$lon}"; API_URL="${API_URL//\{DIST\}/$dist}"
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
-          if msg="$(xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}" | \
-                jq -r --arg aircraft "${json_keys[aircraft]}" \
+          if msg="$(xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}")" && \
+             msg="$(jq -r --arg aircraft "${json_keys[aircraft]}" \
                       --arg hex      "${json_keys[hex]}" \
                       --arg flight   "${json_keys[flight]}" \
                       --arg alt      "${json_keys[alt]}" \
@@ -82,12 +82,12 @@ for l in "${loc[@]}"; do
                       --arg squawk   "${json_keys[squawk]}" \
                       --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
                       '.[$aircraft][] | select( . != null ) 
-                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' | \
+                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' 2>&1 | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
             echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
           else
-            "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\""
+            "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\". MSG: $msg"
             break
           fi
         else
