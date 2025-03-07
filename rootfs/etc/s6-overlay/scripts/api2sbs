@@ -16,8 +16,8 @@ if [[ -z "${LOCATIONS}" ]]; then
 fi
 
 #check if authentication is correctly set
+TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
 if [[ -n "$API_AUTH" ]]; then
-  TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
       || [[ "$(jq -r '.ac[0].reg' <<< "$msg")" != "null" ]]; then
@@ -26,6 +26,9 @@ if [[ -n "$API_AUTH" ]]; then
     exec sleep infinity
   fi
   AUTH_HEADER="-H 'api-auth: $API_AUTH'"
+elif ! curl -sSL "$TEST_URL"; then
+    "${s6wrap[@]}" echo "[FATAL] Cannot reach API endpoint at $API_URL. Check your network connection and the API_URL variable and restart the container."
+    exec sleep infinity
 fi
 
 readarray -d ";" -t loc <<< "${LOCATIONS// /}"
