@@ -21,7 +21,7 @@ TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="$
 if [[ -n "$API_AUTH" ]]; then
   if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
-      || [[ "$(jq -r ".${JSON_AIRCRAFT_KEY}[0].reg <<< "$msg")" != "null" ]]; then
+      || [[ "$(jq -r '.'"${JSON_AIRCRAFT_KEY}"'[0].reg' <<< "$msg")" != "null" ]]; then
     "${s6wrap[@]}" echo "[FATAL] Container Halted: API_URL is wrong or API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
     "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
     exec sleep infinity
