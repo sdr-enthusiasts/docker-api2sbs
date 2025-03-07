@@ -7,9 +7,25 @@ SBS_SERVER="${SBS_SERVER:-ultrafeeder}"
 SBS_PORT="${SBS_PORT:-32006}"
 STATS_INTERVAL="${STATS_INTERVAL:-300}"
 
+# shellcheck disable=SC2016
+if [[ -z "$API_URL" ]]; then API_URL='https://api.airplanes.live/v2/point/{LAT}/{LON}/{DIST}'; fi
+
 if [[ -z "${LOCATIONS}" ]]; then
   "${s6wrap[@]}" echo "[FATAL] LOCATIONS is not set. Container halted"
   exec sleep infinity
+fi
+
+#check if authentication is correctly set
+if [[ -n "$API_AUTH" ]]; then
+  TEST_URL="${API_URL//\{LAT\}/0}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
+  if ! msg="$(curl -sSL -H "api-auth: $API_AUTH" "$TEST_URL")" \
+      || [[ "$msg" = '{"NO_AUTH"}' ]] \
+      || [[ "$(jq -r '.ac[0].reg' <<< "$msg")" != "null" ]]; then
+    "${s6wrap[@]}" echo "[FATAL] Container Halted: API_AUTH is not set correctly. To debug, run the following command from the Linux command line:"
+    "${s6wrap[@]}" echo "        curl -sSL -H \"api-auth: $API_AUTH\" \"$TEST_URL\""
+    exec sleep infinity
+  fi
+  AUTH_HEADER="-H 'api-auth: $API_AUTH'"
 fi
 
 readarray -d ";" -t loc <<< "${LOCATIONS// /}"
@@ -17,7 +33,6 @@ readarray -d ";" -t loc <<< "${LOCATIONS// /}"
 LOOPTIME="${LOOPTIME:-$(( ${#loc[@]} * 3 ))}"
 if (( LOOPTIME < 15 )); then LOOPTIME=15; fi
 
-API_URL="${API_URL:-https://api.airplanes.live/v2/point}"
 if [[ "${API_URL: -1}" == "/" ]]; then API_URL="${API_URL:0:-1}"; fi
 if [[ "${API_URL:0:4}" != "http" ]]; then API_URL="https://${API_URL}"; fi
 
@@ -40,9 +55,13 @@ for l in "${loc[@]}"; do
   l="${l//[^0-9,/-.]/}"; l="${l//$'\n'/}"
   if [[ -n "${l}" ]]; then
     { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat,Lon,Dist=\"$l\""
+      lat="${l%%,*}"; l="${l#*,}"
+      lon="${l%%,*}"; l="${l#*,}"
+      dist="${l%%,*}"
+      API_URL="${API_URL//\{LAT\}/$lat}"; API_URL="${API_URL//\{LON\}/$lon}"; API_URL="${API_URL//\{DIST\}/$dist}"
       while true; do
         if ! chk_disabled "$STATS_INTERVAL"; then        
-          if msg="$(curl -sSL "${API_URL}/${l//,//}" | \
+          if msg="$(xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
                 jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/')"; then
             echo "$msg" >&3
@@ -52,7 +71,7 @@ for l in "${loc[@]}"; do
             break
           fi
         else
-          if ! curl -sSL "${API_URL}/${l//,//}" | \
+          if ! xargs curl <<< "-sSL ${AUTH_HEADER} ${API_URL}" | \
                 jq -r '.ac[] | "MSG,3,1,1,\(.hex|ascii_upcase),1,'"$(date +%Y-%m-%d,%H:%M:%S,%Y-%m-%d,%H:%M:%S)"',\(.flight),\(.alt_baro),\(.gs),\(.track),\(.lat),\(.lon),,\(.squawk),,,,\(if (.alt_baro | tostring) == "ground" then "-1" else "0" end)"' | \
                 sed 's/null//;s/ground/0/' >&3; then
             "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"$l\""
