@@ -41,6 +41,19 @@ elif [[ ${API_URL,,} =~ adsb.fi ]]; then
     [speed]="gs"
     [squawk]="squawk"
   )
+elif [[ ${API_URL,,} =~ aircraft.json ]]; then
+  json_keys=(
+    [aircraft]="aircraft"
+    [registration]="r"
+    [hex]="hex"
+    [flight]="flight"
+    [lat]="lat"
+    [lon]="lon"
+    [alt]="alt_baro"
+    [track]="track"
+    [speed]="gs"
+    [squawk]="squawk"
+  )
 else
   json_keys=(
     [aircraft]="ac"
