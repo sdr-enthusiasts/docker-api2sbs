@@ -40,8 +40,8 @@ else
     sleep $backoff
     backoff=$(( backoff * 2 )); if (( backoff > 60 )); then backoff=60; fi
   done
+  "${s6wrap[@]}" echo "[INFO] API availability confirmed for $API_URL"
 fi
-"${s6wrap[@]}" echo "[INFO] API availability confirmed for $API_URL"
 
 readarray -d ";" -t loc <<< "${LOCATIONS// /}"
 
