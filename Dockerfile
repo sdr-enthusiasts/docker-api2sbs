@@ -13,7 +13,7 @@ RUN set -xe && \
    #
    # Add version to container:
    branch="#main#" && \
-   echo "${branch//#/}_($(curl -ssL "https://api.github.com/repos/kx1t/docker-api2sbs/commits/main" |  awk '{if ($1=="\"sha\":") {print substr($2,2,7); exit}}'))_$(date +%y-%m-%d-%T%Z)" | tee /.VERSION && \
+   echo "${branch//#/}_($(curl -ssL "https://api.github.com/repos/sdr-enthusiasts/docker-api2sbs/commits/main" |  awk '{if ($1=="\"sha\":") {print substr($2,2,7); exit}}'))_$(date +%y-%m-%d-%T%Z)" | tee /.VERSION && \
    #
    # Add some aliases to make debugging easier:
    echo "alias dir=\"ls -alsv\"" >> /root/.bashrc && \

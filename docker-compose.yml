@@ -1,7 +1,7 @@
 services:
 
   api2sbs:
-    image: ghcr.io/kx1t/docker-api2sbs
+    image: ghcr.io/sdr-enthusiasts/docker-api2sbs
     container_name: api2sbs
     hostname: api2sbs
     restart: always
