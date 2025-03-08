@@ -64,50 +64,41 @@ for l in "${loc[@]}"; do
   l="${l//[^0-9A-Za-z,/-.]/}"; l="${l//$'\n'/}"
   if [[ -n "${l}" ]]; then
     { "${s6wrap[@]}" echo "[INFO] Starting data retrieval for Lat,Lon,Dist=\"$l\""
+      # get lat/lon/dist from the location string
       lat="${l%%,*}"; lx="${l#*,}"
       lon="${lx%%,*}"; lx="${lx#*,}"
       dist="${lx%%,*}"; unset lx
+
+      # create logfile if stats are enabled
+      if ! chk_disabled "$STATS_INTERVAL"; then touch "/tmp/sbs_msgs_cache.${l}"; fi
+
+      # construct the API URL
       API_URL="${API_URL//\{LAT\}/$lat}"; API_URL="${API_URL//\{LON\}/$lon}"; API_URL="${API_URL//\{DIST\}/$dist}"
+
       while true; do
-        if ! chk_disabled "$STATS_INTERVAL"; then        
-          if msg="$(xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}")" && \
-             msg="$(jq -r --arg aircraft "${json_keys[aircraft]}" \
-                      --arg hex      "${json_keys[hex]}" \
-                      --arg flight   "${json_keys[flight]}" \
-                      --arg alt      "${json_keys[alt]}" \
-                      --arg speed    "${json_keys[speed]}" \
-                      --arg track    "${json_keys[track]}" \
-                      --arg lat      "${json_keys[lat]}" \
-                      --arg lon      "${json_keys[lon]}" \
-                      --arg squawk   "${json_keys[squawk]}" \
-                      --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
-                      '.[$aircraft][] | select( . != null ) 
-                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' <<< "$msg" 2>&1 | \
-                sed 's/null//;s/ground/0/')"; then
+        # get the data from the API and parse it into a SBS message using JQ
+        if msg="$(xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}")" && \
+            msg="$(jq -r --arg aircraft "${json_keys[aircraft]}" \
+                    --arg hex      "${json_keys[hex]}" \
+                    --arg flight   "${json_keys[flight]}" \
+                    --arg alt      "${json_keys[alt]}" \
+                    --arg speed    "${json_keys[speed]}" \
+                    --arg track    "${json_keys[track]}" \
+                    --arg lat      "${json_keys[lat]}" \
+                    --arg lon      "${json_keys[lon]}" \
+                    --arg squawk   "${json_keys[squawk]}" \
+                    --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
+                    'try .[$aircraft][] | select( . != null ) 
+                      | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' <<< "$msg" 2>&1 | \
+            sed 's/null//;s/ground/0/')"; then
+          # if there's at least one message, send it to the SBS server
+          if [[ -n "$msg" ]]; then
             echo "$msg" >&3
-            echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"
-          else
-            "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\". MSG: $msg"
-            break
+            if ! chk_disabled "$STATS_INTERVAL"; then echo "$msg" >> "/tmp/sbs_msgs_cache.${l}"; fi
           fi
         else
-          if ! xargs curl <<< "-sSL --fail ${AUTH_HEADER} ${API_URL}" | \
-                jq -r --arg aircraft "${json_keys[aircraft]}" \
-                      --arg hex      "${json_keys[hex]}" \
-                      --arg flight   "${json_keys[flight]}" \
-                      --arg alt      "${json_keys[alt]}" \
-                      --arg speed    "${json_keys[speed]}" \
-                      --arg track    "${json_keys[track]}" \
-                      --arg lat      "${json_keys[lat]}" \
-                      --arg lon      "${json_keys[lon]}" \
-                      --arg squawk   "${json_keys[squawk]}" \
-                      --arg date     "$(date +%Y-%m-%d,%H:%M:%S)" \
-                      '.[$aircraft][] | select( . != null ) 
-                        | "MSG,3,1,1,\(.[$hex] | ascii_upcase),1,\($date),\($date),\(.[$flight]),\(.[$alt]),\(.[$speed]),\(.[$track]),\(.[$lat]),\(.[$lon]),,\(.[$squawk]),,,,\(if (.[$alt] | tostring) == "ground" then "-1" else "0" end)"' | \
-                sed 's/null//g;s/ground/0/g' >&3; then
-            "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\""
-            break
-          fi
+          "${s6wrap[@]}" echo "[ERROR] Could not retrieve data for Lat,Lon,Dist=\"${l}\". MSG: $msg"
+          break
         fi
         sleep "$LOOPTIME"
       done
@@ -118,6 +109,11 @@ done
 
 "${s6wrap[@]}" echo "[INFO] Data Retrieval started for all locations"
 
+# if one of the child processes fails, start over again. No need to kill the other processes; they will be
+# killed when the service exits
 wait -n
+
+# be nice and close the FD
 exec 3>&-
+
 "${s6wrap[@]}" echo "[ERROR] Data Retrieval failed. Restarting..."
