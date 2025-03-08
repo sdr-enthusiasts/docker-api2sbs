@@ -21,7 +21,7 @@ fi
 TEST_URL="${API_URL//\{LAT\}/90}"; TEST_URL="${TEST_URL//\{LON\}/0}"; TEST_URL="${TEST_URL//\{DIST\}/0}"
 backoff=1
 if [[ -n "$API_AUTH" ]]; then
-  while ! msg="$(curl -sSL -H --fail-with-body "api-auth: $API_AUTH" "$TEST_URL")" \
+  while ! msg="$(curl -sSL --fail-with-body -H "api-auth: $API_AUTH" "$TEST_URL")" \
       || [[ "$msg" = '{"NO_AUTH"}' ]] \
       || [[ "$(jq -r '.'"${json_keys[aircraft]}"'[0].'"${json_keys[registration]}"'' <<< "$msg")" != "null" ]]; do
     "${s6wrap[@]}" echo "[WARNING] Cannot verify API_URL or API_AUTH. Trying again in $backoff seconds. To debug, run the following command from the Linux command line:"
