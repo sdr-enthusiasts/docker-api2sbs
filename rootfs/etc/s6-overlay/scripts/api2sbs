@@ -116,8 +116,8 @@ done
 "${s6wrap[@]}" echo "[INFO] Data Retrieval started for all locations"
 
 # if one of the child processes fails, start over again.
-wait -n
-pkill -P $$
+wait -n || true
+pkill -P $$ || true
 
 # be nice and close the FD
 exec 3>&-
