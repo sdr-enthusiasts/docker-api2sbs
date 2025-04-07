@@ -66,6 +66,11 @@ while ! exec 3>/dev/tcp/"$SBS_SERVER"/"$SBS_PORT"; do
 done
 "${s6wrap[@]}" echo "[INFO] Successfully opened a connection to $SBS_SERVER:$SBS_PORT"
 
+# Wait a bit before starting the data retrieval - this is needed to avoid running into the rate limits
+# after pinging the server to see that authentication works - (thanks to @dziban303 for the suggestion)
+
+sleep 2
+
 for l in "${loc[@]}"; do
   l="${l//[^0-9A-Za-z,/-.]/}"; l="${l//$'\n'/}"
   if [[ -n "${l}" ]]; then
@@ -123,3 +128,6 @@ pkill -P $$ || true
 exec 3>&-
 
 "${s6wrap[@]}" echo "[ERROR] Data Retrieval failed. Restarting..."
+
+# again - sleep a bit to avoid hitting the rate limits upon next start of the script
+sleep 2
