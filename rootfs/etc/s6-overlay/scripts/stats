@@ -4,14 +4,14 @@ source /scripts/common
 
 STATS_INTERVAL="${STATS_INTERVAL:-300}"
 
-if chk_disabled "$STATS_INTERVAL"; then 
+if chk_disabled "$STATS_INTERVAL"; then
   "${s6wrap[@]}" echo "Stats collection disabled."
   exec sleep infinity
 fi
 
 # wait until there are messages in the cache
 while ! compgen -G "/tmp/sbs_msgs_cache.*" >/dev/null 2>/dev/null; do
-  sleep 1  
+  sleep 1
 done
 
 "${s6wrap[@]}" echo "Stats started - will be showing statistics every $STATS_INTERVAL seconds"
