@@ -1,5 +1,4 @@
 services:
-
   api2sbs:
     image: ghcr.io/sdr-enthusiasts/docker-api2sbs
     container_name: api2sbs
@@ -38,9 +37,9 @@ services:
       - SBS_SERVER=ultrafeeder
       - SBS_PORT=32006
       - LOCATIONS=
-          6,-75,250;
-          15.25,-77.25,250;
-      # - STATS_INTERVAL=60    
+        6,-75,250;
+        15.25,-77.25,250;
+      # - STATS_INTERVAL=60
     tmpfs:
       - /run:rw,nosuid,nodev,exec,relatime,size=32M
       - /tmp:rw,nosuid,nodev,noexec,relatime,size=32M
