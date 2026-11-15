@@ -1,6 +1,7 @@
 FROM ghcr.io/sdr-enthusiasts/docker-baseimage:base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG VERSION_SHA
 # hadolint ignore=SC2068
 RUN set -xe && \
    # define packages needed for installation and general management of the container:
@@ -14,7 +15,7 @@ RUN set -xe && \
    #
    # Add version to container:
    branch="#main#" && \
-   SHA="$(curl --fail --silent --show-error --location --retry 3 "https://api.github.com/repos/sdr-enthusiasts/docker-api2sbs/commits/main" | awk '$1=="\"sha\":" && !f {print substr($2,2,7); f=1}')" && \
+   SHA="${VERSION_SHA:-local}" && SHA="${SHA:0:7}" && \
    [[ -n "$SHA" ]] && \
    echo "${branch//#/}_(${SHA})_$(date +%y-%m-%d-%T%Z)" | tee /.VERSION && \
    #
